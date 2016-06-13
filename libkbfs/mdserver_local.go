@@ -421,10 +421,6 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 		}
 	}
 
-	// Consistency checks and the actual write need to be synchronized.
-	md.mutex.Lock()
-	defer md.mutex.Unlock()
-
 	id := rmds.MD.ID
 
 	// Check permissions
@@ -539,6 +535,9 @@ func (md *MDServerLocal) Put(ctx context.Context, rmds *RootMetadataSigned) erro
 		// Don't send notifies if it's just a rekey (the real mdserver
 		// sends a "folder needs rekey" notification in this case).
 		!(rmds.MD.IsRekeySet() && rmds.MD.IsWriterMetadataCopiedSet()) {
+		md.mutex.Lock()
+		defer md.mutex.Unlock()
+
 		md.sessionHeads[id] = md
 
 		// now fire all the observers that aren't from this session
@@ -620,9 +619,6 @@ func (md *MDServerLocal) RegisterForUpdate(ctx context.Context, id TlfID,
 		return nil, errors.New("MD server already shut down")
 	}
 
-	md.mutex.Lock()
-	defer md.mutex.Unlock()
-
 	// are we already past this revision?  If so, fire observer
 	// immediately
 	head, err := md.getHeadForTLF(ctx, id, NullBranchID, Merged)
@@ -633,6 +629,9 @@ func (md *MDServerLocal) RegisterForUpdate(ctx context.Context, id TlfID,
 	if head != nil {
 		currMergedHeadRev = head.MD.Revision
 	}
+
+	md.mutex.Lock()
+	defer md.mutex.Unlock()
 
 	c := make(chan error, 1)
 	if currMergedHeadRev > currHead && md != md.sessionHeads[id] {
