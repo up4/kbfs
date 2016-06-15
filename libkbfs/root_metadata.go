@@ -161,8 +161,13 @@ type RootMetadata struct {
 
 	codec.UnknownFieldSetHandler
 
-	// The plaintext, deserialized PrivateMetadata
-	data PrivateMetadata
+	// The plaintext, deserialized PrivateMetadata.  We need to
+	// protect setting/getting this field, since it can be set after
+	// the RootMD is created, but access with the PrivateMetadata
+	// itself doesn't require a lock, since the private MD doesn't
+	// change once it's been set.
+	dataLock sync.Mutex
+	data     PrivateMetadata
 
 	// The TLF handle for this MD. May be nil if this object was
 	// deserialized (more common on the server side).
@@ -171,6 +176,12 @@ type RootMetadata struct {
 	// The cached ID for this MD structure (hash)
 	mdIDLock sync.RWMutex
 	mdID     MdID
+}
+
+func (md *RootMetadata) setData(newPrivateMD *PrivateMetadata) {
+	md.dataLock.Lock()
+	defer md.dataLock.Unlock()
+	md.data = *newPrivateMD
 }
 
 func (md *RootMetadata) haveOnlyUserRKeysChanged(config Config, prevMD *RootMetadata, user keybase1.UID) (bool, error) {
@@ -322,12 +333,14 @@ func updateNewRootMetadata(rmd *RootMetadata, id TlfID, h BareTlfHandle) error {
 
 // Data returns the private metadata of this RootMetadata.
 func (md *RootMetadata) Data() *PrivateMetadata {
+	md.dataLock.Lock()
+	defer md.dataLock.Unlock()
 	return &md.data
 }
 
 // IsReadable returns true if the private metadata can be read.
 func (md *RootMetadata) IsReadable() bool {
-	return md.ID.IsPublic() || md.data.Dir.IsInitialized()
+	return md.ID.IsPublic() || md.Data().Dir.IsInitialized()
 }
 
 // increment makes this MD the immediate follower of the given
@@ -366,7 +379,7 @@ func (md *RootMetadata) deepCopyInPlace(codec Codec, copyHandle bool,
 	if err := CodecUpdate(codec, newMd, md); err != nil {
 		return err
 	}
-	if err := CodecUpdate(codec, &newMd.data, md.data); err != nil {
+	if err := CodecUpdate(codec, newMd.Data(), md.Data()); err != nil {
 		return err
 	}
 
@@ -616,7 +629,7 @@ func (md *RootMetadata) clearCachedMetadataIDForTest() {
 func (md *RootMetadata) AddRefBlock(info BlockInfo) {
 	md.RefBytes += uint64(info.EncodedSize)
 	md.DiskUsage += uint64(info.EncodedSize)
-	md.data.Changes.AddRefBlock(info.BlockPointer)
+	md.Data().Changes.AddRefBlock(info.BlockPointer)
 }
 
 // AddUnrefBlock adds the newly-unreferenced block to the add block change list.
@@ -624,7 +637,7 @@ func (md *RootMetadata) AddUnrefBlock(info BlockInfo) {
 	if info.EncodedSize > 0 {
 		md.UnrefBytes += uint64(info.EncodedSize)
 		md.DiskUsage -= uint64(info.EncodedSize)
-		md.data.Changes.AddUnrefBlock(info.BlockPointer)
+		md.Data().Changes.AddUnrefBlock(info.BlockPointer)
 	}
 }
 
@@ -635,7 +648,7 @@ func (md *RootMetadata) AddUpdate(oldInfo BlockInfo, newInfo BlockInfo) {
 		md.RefBytes += uint64(newInfo.EncodedSize)
 		md.DiskUsage += uint64(newInfo.EncodedSize)
 		md.DiskUsage -= uint64(oldInfo.EncodedSize)
-		md.data.Changes.AddUpdate(oldInfo.BlockPointer, newInfo.BlockPointer)
+		md.Data().Changes.AddUpdate(oldInfo.BlockPointer, newInfo.BlockPointer)
 	}
 }
 
@@ -643,7 +656,7 @@ func (md *RootMetadata) AddUpdate(oldInfo BlockInfo, newInfo BlockInfo) {
 // AddRefBlock, AddUnrefBlock, and AddUpdate calls will be applied to
 // this operation.
 func (md *RootMetadata) AddOp(o op) {
-	md.data.Changes.AddOp(o)
+	md.Data().Changes.AddOp(o)
 }
 
 // ClearBlockChanges resets the block change lists to empty for this
@@ -651,9 +664,9 @@ func (md *RootMetadata) AddOp(o op) {
 func (md *RootMetadata) ClearBlockChanges() {
 	md.RefBytes = 0
 	md.UnrefBytes = 0
-	md.data.Changes.sizeEstimate = 0
-	md.data.Changes.Info = BlockInfo{}
-	md.data.Changes.Ops = nil
+	md.Data().Changes.sizeEstimate = 0
+	md.Data().Changes.Info = BlockInfo{}
+	md.Data().Changes.Ops = nil
 }
 
 // Helper which returns nil if the md block is uninitialized or readable by
@@ -746,11 +759,11 @@ func (md *RootMetadata) updateFromTlfHandle(newHandle *TlfHandle) error {
 // future local accesses to this MD (from the cache) can directly
 // access the ops without needing to re-embed the block changes.
 func (md *RootMetadata) swapCachedBlockChanges() {
-	if md.data.Changes.Ops == nil {
-		md.data.Changes, md.data.cachedChanges =
-			md.data.cachedChanges, md.data.Changes
-		md.data.Changes.Ops[0].
-			AddRefBlock(md.data.cachedChanges.Info.BlockPointer)
+	if md.Data().Changes.Ops == nil {
+		md.Data().Changes, md.Data().cachedChanges =
+			md.Data().cachedChanges, md.Data().Changes
+		md.Data().Changes.Ops[0].
+			AddRefBlock(md.Data().cachedChanges.Info.BlockPointer)
 	}
 }
 

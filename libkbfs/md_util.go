@@ -215,7 +215,7 @@ func decryptMDPrivateData(ctx context.Context, config Config,
 
 	if handle.IsPublic() {
 		if err := codec.Decode(rmdToDecrypt.SerializedPrivateMetadata,
-			&rmdToDecrypt.data); err != nil {
+			rmdToDecrypt.Data()); err != nil {
 			return err
 		}
 	} else {
@@ -253,7 +253,7 @@ func decryptMDPrivateData(ctx context.Context, config Config,
 				return err
 			}
 		}
-		rmdToDecrypt.data = *privateMetadata
+		rmdToDecrypt.setData(privateMetadata)
 	}
 	return nil
 }

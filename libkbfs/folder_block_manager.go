@@ -351,7 +351,7 @@ func (fbm *folderBlockManager) processBlocksToDelete(ctx context.Context) error 
 			continue
 		}
 		dirsEqual, err := CodecEqual(fbm.config.Codec(),
-			rmds[0].data.Dir, md.data.Dir)
+			rmds[0].Data().Dir, md.Data().Dir)
 		if err != nil {
 			fbm.log.CErrorf(ctx, "Error when comparing dirs: %v", err)
 		} else if dirsEqual {
@@ -449,7 +449,7 @@ func (fbm *folderBlockManager) archiveBlocksInBackground() {
 		select {
 		case md := <-fbm.archiveChan:
 			var ptrs []BlockPointer
-			for _, op := range md.data.Changes.Ops {
+			for _, op := range md.Data().Changes.Ops {
 				ptrs = append(ptrs, op.Unrefs()...)
 				for _, update := range op.AllUpdates() {
 					// It's legal for there to be an "update" between
@@ -511,12 +511,12 @@ func (fbm *folderBlockManager) isOldEnough(rmd *RootMetadata) bool {
 	// another writer to clear out quotas early.  That's
 	// ok, there's nothing we can really do about that.
 	//
-	// TODO: rmd.data.Dir.Mtime does not necessarily reflect when the
+	// TODO: rmd.Data().Dir.Mtime does not necessarily reflect when the
 	// MD was made, since it only gets updated if the root directory
 	// mtime needs to be updated.  As a result, some updates may be
 	// cleaned up earlier than desired.  We need to find a more stable
 	// way to record MD update time (KBFS-821).
-	mtime := time.Unix(0, rmd.data.Dir.Mtime)
+	mtime := time.Unix(0, rmd.Data().Dir.Mtime)
 	unrefAge := fbm.config.QuotaReclamationMinUnrefAge()
 	return mtime.Add(unrefAge).Before(fbm.config.Clock().Now())
 }
@@ -562,8 +562,8 @@ func (fbm *folderBlockManager) getMostRecentOldEnoughAndGCRevisions(
 			}
 
 			if lastGCRev == MetadataRevisionUninitialized {
-				for j := len(rmd.data.Changes.Ops) - 1; j >= 0; j-- {
-					gcOp, ok := rmd.data.Changes.Ops[j].(*gcOp)
+				for j := len(rmd.Data().Changes.Ops) - 1; j >= 0; j-- {
+					gcOp, ok := rmd.Data().Changes.Ops[j].(*gcOp)
 					if !ok {
 						continue
 					}
@@ -646,7 +646,7 @@ outer:
 			}
 			// Save the latest revision starting at this position:
 			revStartPositions[rmd.Revision] = len(ptrs)
-			for _, op := range rmd.data.Changes.Ops {
+			for _, op := range rmd.Data().Changes.Ops {
 				if _, ok := op.(*gcOp); ok {
 					continue
 				}

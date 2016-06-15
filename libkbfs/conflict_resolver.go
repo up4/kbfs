@@ -2542,7 +2542,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 	// Track the refs and unrefs in a set, to ensure no duplicates
 	refs := make(map[BlockPointer]bool)
 	unrefs := make(map[BlockPointer]bool)
-	for _, op := range md.data.Changes.Ops {
+	for _, op := range md.Data().Changes.Ops {
 		for _, ptr := range op.Refs() {
 			// Don't add usage it's an unembedded block change pointer.
 			if _, ok := unmergedChains.blockChangePointers[ptr]; !ok {
@@ -2654,7 +2654,7 @@ func (cr *ConflictResolver) calculateResolutionUsage(ctx context.Context,
 		// Put the unrefs on the final operations, to cancel out any
 		// stray refs in earlier ops.
 		cr.log.CDebugf(ctx, "Unreferencing dropped block %v", ptr)
-		md.data.Changes.Ops[len(md.data.Changes.Ops)-1].AddUnrefBlock(ptr)
+		md.Data().Changes.Ops[len(md.Data().Changes.Ops)-1].AddUnrefBlock(ptr)
 	}
 
 	cr.log.CDebugf(ctx, "New md byte usage: %d ref, %d unref, %d total usage "+
@@ -2765,7 +2765,7 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 		return nil, nil, err
 	}
 
-	oldOps := md.data.Changes.Ops
+	oldOps := md.Data().Changes.Ops
 	resOp, ok := oldOps[len(oldOps)-1].(*resolutionOp)
 	if !ok {
 		return nil, nil, fmt.Errorf("dummy op is not gc: %s",
@@ -2862,7 +2862,7 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 	resOp.Updates = newUpdates
 
 	newOps[0] = resOp // move the dummy ops to the front
-	md.data.Changes.Ops = newOps
+	md.Data().Changes.Ops = newOps
 
 	// TODO: only perform this loop if debugging is enabled.
 	for _, op := range newOps {
@@ -2882,8 +2882,8 @@ func (cr *ConflictResolver) syncBlocks(ctx context.Context, lState *lockState,
 
 	// do the block changes need their own blocks?
 	bsplit := cr.config.BlockSplitter()
-	if !bsplit.ShouldEmbedBlockChanges(&md.data.Changes) {
-		err = cr.fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes, uid)
+	if !bsplit.ShouldEmbedBlockChanges(&md.Data().Changes) {
+		err = cr.fbo.unembedBlockChanges(ctx, bps, md, &md.Data().Changes, uid)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -3088,7 +3088,7 @@ func (cr *ConflictResolver) maybeUnstageAfterFailure(ctx context.Context,
 	foundGCOp := false
 outer:
 	for _, rmd := range mergedMDs {
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			if _, ok := op.(*gcOp); ok {
 				foundGCOp = true
 				break outer

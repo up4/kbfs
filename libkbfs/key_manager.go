@@ -678,7 +678,7 @@ func (km *KeyManagerStandard) Rekey(ctx context.Context, md *RootMetadata, promp
 	if err != nil {
 		return false, nil, err
 	}
-	md.data.TLFPrivateKey = privKey
+	md.Data().TLFPrivateKey = privKey
 
 	// Delete server-side key halves for any revoked devices.
 	for keygen := KeyGen(FirstValidKeyGen); keygen <= currKeyGen; keygen++ {

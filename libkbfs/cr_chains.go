@@ -528,11 +528,11 @@ func newCRChains(ctx context.Context, cfg Config, rmds []*RootMetadata) (
 			return nil, err
 		}
 
-		if ptr := rmd.data.cachedChanges.Info.BlockPointer; ptr != zeroPtr {
+		if ptr := rmd.Data().cachedChanges.Info.BlockPointer; ptr != zeroPtr {
 			ccs.blockChangePointers[ptr] = true
 		}
 
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			op.setWriterInfo(winfo)
 			err := ccs.makeChainForOp(op)
 			if err != nil {
@@ -543,7 +543,7 @@ func newCRChains(ctx context.Context, cfg Config, rmds []*RootMetadata) (
 		if !ccs.originalRoot.IsInitialized() {
 			// Find the original pointer for the root directory
 			if rootChain, ok :=
-				ccs.byMostRecent[rmd.data.Dir.BlockPointer]; ok {
+				ccs.byMostRecent[rmd.Data().Dir.BlockPointer]; ok {
 				ccs.originalRoot = rootChain.original
 			}
 		}

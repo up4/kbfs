@@ -437,6 +437,7 @@ func makeFakeRootMetadataFuture(t *testing.T) *rootMetadataFuture {
 				nil,
 				nil,
 				codec.UnknownFieldSetHandler{},
+				sync.Mutex{},
 				PrivateMetadata{},
 				nil,
 				sync.RWMutex{},

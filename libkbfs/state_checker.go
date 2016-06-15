@@ -167,7 +167,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			continue
 		}
 
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			gcOp, ok := op.(*gcOp)
 			if !ok {
 				continue
@@ -182,14 +182,14 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 			continue
 		}
 		// Any unembedded block changes also count towards the actual size
-		if info := rmd.data.cachedChanges.Info; info.BlockPointer != zeroPtr {
+		if info := rmd.Data().cachedChanges.Info; info.BlockPointer != zeroPtr {
 			sc.log.CDebugf(ctx, "Unembedded block change: %v, %d",
 				info.BlockPointer, info.EncodedSize)
 			actualLiveBlocks[info.BlockPointer] = info.EncodedSize
 		}
 
 		var hasGCOp bool
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			_, isGCOp := op.(*gcOp)
 			hasGCOp = hasGCOp || isGCOp
 
@@ -235,7 +235,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 		expectedRef += rmd.RefBytes
 		expectedRef -= rmd.UnrefBytes
 
-		if len(rmd.data.Changes.Ops) == 1 && hasGCOp {
+		if len(rmd.Data().Changes.Ops) == 1 && hasGCOp {
 			// Don't check GC status for GC revisions
 			continue
 		}
@@ -244,7 +244,7 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 		// op, it is.  Note that this assumes that if QR is ever run,
 		// it will be run completely and not left partially done due
 		// to there being too many pointers to collect in one sweep.
-		mtime := time.Unix(0, rmd.data.Dir.Mtime)
+		mtime := time.Unix(0, rmd.Data().Dir.Mtime)
 		if !lastGCRevisionTime.Before(mtime) {
 			if rmd.Revision > gcRevision {
 				return fmt.Errorf("Revision %d happened before the last "+
@@ -271,11 +271,11 @@ func (sc *StateChecker) CheckMergedState(ctx context.Context, tlf TlfID) error {
 		return err
 	}
 	rootPath := ops.nodeCache.PathFromNode(rootNode)
-	if g, e := rootPath.tailPointer(), currMD.data.Dir.BlockPointer; g != e {
+	if g, e := rootPath.tailPointer(), currMD.Data().Dir.BlockPointer; g != e {
 		return fmt.Errorf("Current MD root pointer %v doesn't match root "+
 			"node pointer %v", e, g)
 	}
-	actualLiveBlocks[rootPath.tailPointer()] = currMD.data.Dir.EncodedSize
+	actualLiveBlocks[rootPath.tailPointer()] = currMD.Data().Dir.EncodedSize
 	if err := sc.findAllBlocksInPath(ctx, lState, ops, currMD, rootPath,
 		actualLiveBlocks); err != nil {
 		return err

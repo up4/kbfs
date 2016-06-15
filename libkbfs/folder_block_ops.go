@@ -918,8 +918,8 @@ func (fbo *folderBlockOps) PrepRename(
 				}
 			}
 		} else {
-			md.data.Dir.Ctime = now
-			md.data.Dir.Mtime = now
+			md.Data().Dir.Ctime = now
+			md.Data().Dir.Mtime = now
 		}
 	}
 	return oldPBlock, newPBlock, newDe, lbc, nil
@@ -2203,7 +2203,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 	}
 
 	// Start with the root node
-	rootPtr := md.data.Dir.BlockPointer
+	rootPtr := md.Data().Dir.BlockPointer
 	var node Node
 	if cache == fbo.nodeCache {
 		// Root node should already exist.
@@ -2235,7 +2235,7 @@ func (fbo *folderBlockOps) SearchForNodes(ctx context.Context,
 	rootPath := cache.PathFromNode(node)
 	if len(rootPath.path) != 1 {
 		return nil, fmt.Errorf("Invalid root path for %v: %s",
-			md.data.Dir.BlockPointer, rootPath)
+			md.Data().Dir.BlockPointer, rootPath)
 	}
 
 	_, err := fbo.searchForNodesInDirLocked(ctx, lState, cache, newPtrs, md, rootPath,

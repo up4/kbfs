@@ -623,7 +623,7 @@ func (fbo *folderBranchOps) getMDLocked(
 		}
 	}
 
-	if md.data.Dir.Type != Dir && (!md.IsInitialized() || md.IsReadable()) {
+	if md.Data().Dir.Type != Dir && (!md.IsInitialized() || md.IsReadable()) {
 		err = fbo.initMDLocked(ctx, lState, md)
 		if err != nil {
 			return nil, err
@@ -792,7 +792,7 @@ func (fbo *folderBranchOps) initMDLocked(
 	}
 
 	now := fbo.nowUnixNano()
-	md.data.Dir = DirEntry{
+	md.Data().Dir = DirEntry{
 		BlockInfo: info,
 		EntryInfo: EntryInfo{
 			Type:  Dir,
@@ -802,7 +802,7 @@ func (fbo *folderBranchOps) initMDLocked(
 		},
 	}
 	md.AddOp(newCreateOp("", BlockPointer{}, Dir))
-	md.AddRefBlock(md.data.Dir.BlockInfo)
+	md.AddRefBlock(md.Data().Dir.BlockInfo)
 	md.UnrefBytes = 0
 
 	if err = fbo.config.BlockOps().Put(ctx, md, info.BlockPointer,
@@ -892,7 +892,7 @@ func (fbo *folderBranchOps) CheckForNewMDAndInit(
 		fbo.mdWriterLock.Lock(lState)
 		defer fbo.mdWriterLock.Unlock(lState)
 
-		if md.data.Dir.Type == Dir {
+		if md.Data().Dir.Type == Dir {
 			// this MD is already initialized
 			fbo.headLock.Lock(lState)
 			defer fbo.headLock.Unlock(lState)
@@ -968,7 +968,7 @@ func (fbo *folderBranchOps) getRootNode(ctx context.Context) (
 	}
 
 	handle = md.GetTlfHandle()
-	node, err = fbo.nodeCache.GetOrCreate(md.data.Dir.BlockPointer,
+	node, err = fbo.nodeCache.GetOrCreate(md.Data().Dir.BlockPointer,
 		string(handle.GetCanonicalName()), nil)
 	if err != nil {
 		return nil, EntryInfo{}, nil, err
@@ -1127,7 +1127,7 @@ func (fbo *folderBranchOps) statEntry(ctx context.Context, node Node) (
 
 	} else {
 		// nodePath is just the root.
-		de = md.data.Dir
+		de = md.Data().Dir
 	}
 
 	return de, nil
@@ -1217,7 +1217,7 @@ func (fbo *folderBranchOps) unembedBlockChanges(
 	if err != nil {
 		return
 	}
-	md.data.cachedChanges = *changes
+	md.Data().cachedChanges = *changes
 	changes.Info = info
 	changes.Ops = nil
 	md.RefBytes += uint64(info.EncodedSize)
@@ -1284,7 +1284,7 @@ func (fbo *folderBranchOps) syncBlock(
 		nextDoSetTime := false
 		if prevIdx < 0 {
 			// root dir, update the MD instead
-			de = md.data.Dir
+			de = md.Data().Dir
 		} else {
 			prevDir := path{
 				FolderBranch: dir.FolderBranch,
@@ -1350,7 +1350,7 @@ func (fbo *folderBranchOps) syncBlock(
 		}
 
 		if prevIdx < 0 {
-			md.AddUpdate(md.data.Dir.BlockInfo, info)
+			md.AddUpdate(md.Data().Dir.BlockInfo, info)
 		} else if prevDe, ok := prevDblock.Children[currName]; ok {
 			md.AddUpdate(prevDe.BlockInfo, info)
 		} else {
@@ -1376,7 +1376,7 @@ func (fbo *folderBranchOps) syncBlock(
 		}
 
 		if prevIdx < 0 {
-			md.data.Dir = de
+			md.Data().Dir = de
 		} else {
 			prevDblock.Children[currName] = de
 		}
@@ -1446,8 +1446,8 @@ func (fbo *folderBranchOps) syncBlockAndCheckEmbedLocked(ctx context.Context,
 
 	// do the block changes need their own blocks?
 	bsplit := fbo.config.BlockSplitter()
-	if !bsplit.ShouldEmbedBlockChanges(&md.data.Changes) {
-		err = fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes,
+	if !bsplit.ShouldEmbedBlockChanges(&md.Data().Changes) {
+		err = fbo.unembedBlockChanges(ctx, bps, md, &md.Data().Changes,
 			uid)
 		if err != nil {
 			return path{}, DirEntry{}, nil, err
@@ -1744,7 +1744,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 
 	md.AddOp(gco)
 
-	if !fbo.config.BlockSplitter().ShouldEmbedBlockChanges(&md.data.Changes) {
+	if !fbo.config.BlockSplitter().ShouldEmbedBlockChanges(&md.Data().Changes) {
 		var uid keybase1.UID
 		_, uid, err = fbo.config.KBPKI().GetCurrentUserInfo(ctx)
 		if err != nil {
@@ -1752,7 +1752,7 @@ func (fbo *folderBranchOps) finalizeGCOp(ctx context.Context, gco *gcOp) (
 		}
 
 		bps := newBlockPutState(1)
-		err = fbo.unembedBlockChanges(ctx, bps, md, &md.data.Changes, uid)
+		err = fbo.unembedBlockChanges(ctx, bps, md, &md.Data().Changes, uid)
 		if err != nil {
 			return err
 		}
@@ -1845,7 +1845,7 @@ func (fbo *folderBranchOps) checkNewDirSize(ctx context.Context,
 		currSize = de.Size
 	} else {
 		// dirPath is just the root.
-		currSize = md.data.Dir.Size
+		currSize = md.Data().Dir.Size
 	}
 	// Just an approximation since it doesn't include the size of the
 	// directory entry itself, but that's ok -- at worst it'll be an
@@ -2664,7 +2664,7 @@ func (fbo *folderBranchOps) syncLocked(ctx context.Context,
 	// If the MD doesn't match the MD expected by the path, that
 	// implies we are using a cached path, which implies the node has
 	// been unlinked.  In that case, we can safely ignore this sync.
-	if md.data.Dir.BlockPointer != file.path[0].BlockPointer {
+	if md.Data().Dir.BlockPointer != file.path[0].BlockPointer {
 		fbo.log.CDebugf(ctx, "Skipping sync for a removed file %v",
 			file.tailPointer())
 		// Removing the cached info here is a little sketchy,
@@ -2818,7 +2818,7 @@ func (fbo *folderBranchOps) notifyBatchLocked(
 	ctx context.Context, lState *lockState, md *RootMetadata) {
 	fbo.headLock.AssertLocked(lState)
 
-	lastOp := md.data.Changes.Ops[len(md.data.Changes.Ops)-1]
+	lastOp := md.Data().Changes.Ops[len(md.Data().Changes.Ops)-1]
 	fbo.notifyOneOpLocked(ctx, lState, lastOp, md)
 }
 
@@ -2830,7 +2830,7 @@ func (fbo *folderBranchOps) searchForNode(ctx context.Context,
 	// Record which pointers are new to this update, and thus worth
 	// searching.
 	newPtrs := make(map[BlockPointer]bool)
-	for _, op := range md.data.Changes.Ops {
+	for _, op := range md.Data().Changes.Ops {
 		for _, update := range op.AllUpdates() {
 			newPtrs[update.Ref] = true
 		}
@@ -3072,7 +3072,7 @@ func (fbo *folderBranchOps) reembedBlockChanges(ctx context.Context,
 	// if any of the operations have unembedded block ops, fetch those
 	// now and fix them up.  TODO: parallelize me.
 	for _, rmd := range rmds {
-		info := rmd.data.Changes.Info
+		info := rmd.Data().Changes.Info
 		if info.BlockPointer == zeroPtr {
 			continue
 		}
@@ -3083,13 +3083,13 @@ func (fbo *folderBranchOps) reembedBlockChanges(ctx context.Context,
 			return err
 		}
 
-		err = fbo.config.Codec().Decode(fblock.Contents, &rmd.data.Changes)
+		err = fbo.config.Codec().Decode(fblock.Contents, &rmd.Data().Changes)
 		if err != nil {
 			return err
 		}
 		// The changes block pointer is an implicit ref block
-		rmd.data.Changes.Ops[0].AddRefBlock(info.BlockPointer)
-		rmd.data.cachedChanges.Info = info
+		rmd.Data().Changes.Ops[0].AddRefBlock(info.BlockPointer)
+		rmd.Data().cachedChanges.Info = info
 	}
 	return nil
 }
@@ -3157,7 +3157,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 		if rmd.IsWriterMetadataCopiedSet() {
 			continue
 		}
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			fbo.notifyOneOpLocked(ctx, lState, op, rmd)
 		}
 	}
@@ -3199,7 +3199,7 @@ func (fbo *folderBranchOps) undoMDUpdatesLocked(ctx context.Context,
 		}
 
 		// iterate the ops in reverse and invert each one
-		ops := rmd.data.Changes.Ops
+		ops := rmd.Data().Changes.Ops
 		for j := len(ops) - 1; j >= 0; j-- {
 			fbo.notifyOneOpLocked(ctx, lState, invertOpForLocalNotifications(ops[j]), rmd)
 		}
@@ -3303,7 +3303,7 @@ func (fbo *folderBranchOps) undoUnmergedMDUpdatesLocked(
 	// Return all new refs
 	var unmergedPtrs []BlockPointer
 	for _, rmd := range unmergedRmds {
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			for _, ptr := range op.Refs() {
 				if ptr != zeroPtr {
 					unmergedPtrs = append(unmergedPtrs, ptr)
@@ -3971,12 +3971,12 @@ func (fbo *folderBranchOps) GetUpdateHistory(ctx context.Context,
 		}
 		updateSummary := UpdateSummary{
 			Revision:  rmd.Revision,
-			Date:      time.Unix(0, rmd.data.Dir.Mtime),
+			Date:      time.Unix(0, rmd.Data().Dir.Mtime),
 			Writer:    writer,
 			LiveBytes: rmd.DiskUsage,
-			Ops:       make([]OpSummary, 0, len(rmd.data.Changes.Ops)),
+			Ops:       make([]OpSummary, 0, len(rmd.Data().Changes.Ops)),
 		}
-		for _, op := range rmd.data.Changes.Ops {
+		for _, op := range rmd.Data().Changes.Ops {
 			opSummary := OpSummary{
 				Op:      op.String(),
 				Refs:    make([]string, 0, len(op.Refs())),

@@ -251,7 +251,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	} else {
 		keyGen = 1
 	}
-	rmd.data.Dir = DirEntry{
+	rmd.Data().Dir = DirEntry{
 		BlockInfo: BlockInfo{
 			BlockPointer: BlockPointer{
 				KeyGen:  keyGen,
@@ -271,7 +271,7 @@ func injectNewRMD(t *testing.T, config *ConfigMock) (
 	config.Notifier().RegisterForChanges(
 		[]FolderBranch{{id, MasterBranch}}, config.observer)
 	uid := h.FirstResolvedWriter()
-	rmd.data.Dir.Creator = uid
+	rmd.Data().Dir.Creator = uid
 	return uid, id, rmd
 }
 
@@ -280,8 +280,8 @@ func TestKBFSOpsGetRootNodeCacheSuccess(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	_, id, rmd := injectNewRMD(t, config)
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.Data().Dir.Type = Dir
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -293,8 +293,8 @@ func TestKBFSOpsGetRootNodeCacheSuccess(t *testing.T) {
 	p := ops.nodeCache.PathFromNode(n)
 	assert.Equal(t, id, p.Tlf)
 	require.Equal(t, 1, len(p.path))
-	assert.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
-	assert.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	assert.Equal(t, rmd.Data().Dir.ID, p.path[0].ID)
+	assert.Equal(t, rmd.Data().Dir.EntryInfo, ei)
 	assert.Equal(t, rmd.GetTlfHandle(), h)
 
 	// Trigger identify.
@@ -309,8 +309,8 @@ func TestKBFSOpsGetRootNodeReIdentify(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	_, id, rmd := injectNewRMD(t, config)
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.Data().Dir.Type = Dir
 
 	ops := getOps(config, id)
 	assert.False(t, fboIdentityDone(ops))
@@ -322,8 +322,8 @@ func TestKBFSOpsGetRootNodeReIdentify(t *testing.T) {
 	p := ops.nodeCache.PathFromNode(n)
 	assert.Equal(t, id, p.Tlf)
 	require.Equal(t, 1, len(p.path))
-	assert.Equal(t, rmd.data.Dir.ID, p.path[0].ID)
-	assert.Equal(t, rmd.data.Dir.EntryInfo, ei)
+	assert.Equal(t, rmd.Data().Dir.ID, p.path[0].ID)
+	assert.Equal(t, rmd.Data().Dir.EntryInfo, ei)
 	assert.Equal(t, rmd.GetTlfHandle(), h)
 
 	// Trigger identify.
@@ -368,8 +368,8 @@ func TestKBFSOpsGetRootNodeCacheIdentifyFail(t *testing.T) {
 
 	_, id, rmd := injectNewRMD(t, config)
 
-	rmd.data.Dir.BlockPointer.ID = fakeBlockID(1)
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.BlockPointer.ID = fakeBlockID(1)
+	rmd.Data().Dir.Type = Dir
 
 	ops := getOps(config, id)
 
@@ -526,7 +526,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 	defer kbfsTestShutdown(mockCtrl, config)
 
 	id, h, rmd := createNewRMD(t, config, "alice", false)
-	rmd.data.Dir = DirEntry{
+	rmd.Data().Dir = DirEntry{
 		BlockInfo: BlockInfo{
 			BlockPointer: BlockPointer{
 				ID: fakeBlockID(1),
@@ -558,7 +558,7 @@ func TestKBFSOpsGetRootMDForHandleExisting(t *testing.T) {
 		t.Errorf("Got bad dir id back: %v", p.Tlf)
 	} else if len(p.path) != 1 {
 		t.Errorf("Got bad MD back: path size %d", len(p.path))
-	} else if p.path[0].ID != rmd.data.Dir.ID {
+	} else if p.path[0].ID != rmd.Data().Dir.ID {
 		t.Errorf("Got bad MD back: root ID %v", p.path[0].ID)
 	} else if ei.Type != Dir {
 		t.Error("Got bad MD non-dir rootID back")
@@ -1155,7 +1155,7 @@ func checkNewPath(t *testing.T, ctx context.Context, config Config,
 	}
 
 	// all the entries should point correctly and have the right times set
-	currDe := rmd.data.Dir
+	currDe := rmd.Data().Dir
 	for i, id := range blocks {
 		var timeSet bool
 		if newName != "" {
@@ -1191,7 +1191,7 @@ func checkNewPath(t *testing.T, ctx context.Context, config Config,
 			}
 			// TODO: update BlockPointer for refnonces when we start deduping
 			dblock := getDirBlockFromCache(t, config,
-				makeBP(id, rmd, config, rmd.data.Dir.Creator), newPath.Branch)
+				makeBP(id, rmd, config, rmd.Data().Dir.Creator), newPath.Branch)
 			nextDe, ok := dblock.Children[nextName]
 			if !ok {
 				t.Errorf("No entry (%d) for %s", i, nextName)
@@ -1260,8 +1260,8 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.ID = rootID
+	rmd.Data().Dir.Type = Dir
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -1328,7 +1328,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
 
 	// make sure the createOp is correct
-	co, ok := newRmd.data.Changes.Ops[0].(*createOp)
+	co, ok := newRmd.Data().Changes.Ops[0].(*createOp)
 	if !ok {
 		t.Errorf("Couldn't find the createOp")
 	}
@@ -1337,7 +1337,7 @@ func testCreateEntrySuccess(t *testing.T, entryType EntryType) {
 		refBlocks = append(refBlocks, newP.path[2].BlockPointer)
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, co.OpCommon, refBlocks, nil, updates)
 	dirUpdate := blockUpdate{rootBlock.Children["a"].BlockPointer,
@@ -1466,7 +1466,7 @@ func testCreateEntryFailDirTooBig(t *testing.T, isDir bool) {
 	p := path{FolderBranch{Tlf: id}, []pathNode{node}}
 	ops := getOps(config, id)
 	n := nodeFromPath(t, ops, p)
-	rmd.data.Dir.Size = 10
+	rmd.Data().Dir.Size = 10
 
 	config.maxDirBytes = 12
 	name := "aaa"
@@ -1560,7 +1560,7 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -1625,13 +1625,13 @@ func testRemoveEntrySuccess(t *testing.T, entryType EntryType) {
 	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
 
 	// make sure the rmOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*rmOp)
 	if !ok {
 		t.Errorf("Couldn't find the rmOp")
 	}
 	unrefBlocks := []BlockPointer{bNode.BlockPointer}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, ro.OpCommon, nil, unrefBlocks, updates)
 	dirUpdate := blockUpdate{rootBlock.Children["a"].BlockPointer,
@@ -1662,7 +1662,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	fileID := fakeBlockID(43)
 	id1 := fakeBlockID(44)
 	id2 := fakeBlockID(45)
@@ -1734,7 +1734,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		append(blocks, rootID, fileID, id1, id2, id3, id4), nil)
 
 	// make sure the rmOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*rmOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*rmOp)
 	if !ok {
 		t.Errorf("Couldn't find the rmOp")
 	}
@@ -1746,7 +1746,7 @@ func TestKBFSOpRemoveMultiBlockFileSuccess(t *testing.T) {
 		fileBlock.IPtrs[3].BlockPointer,
 	}
 	checkOp(t, ro.OpCommon, nil, unrefBlocks, nil)
-	dirUpdate := blockUpdate{rmd.data.Dir.BlockPointer,
+	dirUpdate := blockUpdate{rmd.Data().Dir.BlockPointer,
 		newP.path[0].BlockPointer}
 	if ro.Dir != dirUpdate {
 		t.Errorf("Incorrect dir update in op: %v vs. %v", ro.Dir, dirUpdate)
@@ -1847,7 +1847,7 @@ func TestRenameInDirSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -1900,12 +1900,12 @@ func TestRenameInDirSuccess(t *testing.T) {
 	checkBlockCache(t, config, append(blocks, rootID, aID), nil)
 
 	// make sure the renameOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*renameOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*renameOp)
 	if !ok {
 		t.Errorf("Couldn't find the renameOp")
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, ro.OpCommon, nil, nil, updates)
 	oldDirUpdate := blockUpdate{aNode.BlockPointer, newP.path[1].BlockPointer}
@@ -1930,7 +1930,7 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	cID := fakeBlockID(44)
@@ -1994,12 +1994,12 @@ func TestRenameInDirOverEntrySuccess(t *testing.T) {
 	checkBlockCache(t, config, append(blocks, rootID, aID, cID), nil)
 
 	// make sure the renameOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*renameOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*renameOp)
 	if !ok {
 		t.Errorf("Couldn't find the renameOp")
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, ro.OpCommon, nil, []BlockPointer{cNode.BlockPointer}, updates)
 	oldDirUpdate := blockUpdate{aNode.BlockPointer, newP.path[1].BlockPointer}
@@ -2024,7 +2024,7 @@ func TestRenameInRootSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -2067,12 +2067,12 @@ func TestRenameInRootSuccess(t *testing.T) {
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
 	// make sure the renameOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*renameOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*renameOp)
 	if !ok {
 		t.Errorf("Couldn't find the renameOp")
 	}
 	checkOp(t, ro.OpCommon, nil, nil, nil)
-	oldDirUpdate := blockUpdate{rmd.data.Dir.BlockPointer,
+	oldDirUpdate := blockUpdate{rmd.Data().Dir.BlockPointer,
 		newP.path[0].BlockPointer}
 	newDirUpdate := blockUpdate{}
 	if ro.OldDir != oldDirUpdate {
@@ -2095,11 +2095,11 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
-	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.ID = rootID
+	rmd.Data().Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -2179,12 +2179,12 @@ func TestRenameAcrossDirsSuccess(t *testing.T) {
 		append(blocks2, rootID, aID, dID, blocks1[0]), nil)
 
 	// make sure the renameOp is correct
-	ro, ok := newRmd.data.Changes.Ops[0].(*renameOp)
+	ro, ok := newRmd.Data().Changes.Ops[0].(*renameOp)
 	if !ok {
 		t.Errorf("Couldn't find the renameOp")
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP1.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP1.path[0].BlockPointer},
 	}
 	checkOp(t, ro.OpCommon, nil, nil, updates)
 	oldDirUpdate := blockUpdate{aNode.BlockPointer, newP1.path[1].BlockPointer}
@@ -2209,12 +2209,12 @@ func TestRenameAcrossPrefixSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	dID := fakeBlockID(40)
-	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.ID = rootID
+	rmd.Data().Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -2308,12 +2308,12 @@ func TestRenameAcrossOtherPrefixSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(41)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(42)
 	bID := fakeBlockID(43)
 	dID := fakeBlockID(40)
-	rmd.data.Dir.ID = rootID
-	rmd.data.Dir.Type = Dir
+	rmd.Data().Dir.ID = rootID
+	rmd.Data().Dir.Type = Dir
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
 		BlockInfo: makeBIFromID(aID, uid),
@@ -3610,7 +3610,7 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -3687,12 +3687,12 @@ func testSetExSuccess(t *testing.T, entryType EntryType, ex bool) {
 
 	if entryType != Sym {
 		// make sure the setAttrOp is correct
-		sao, ok := newRmd.data.Changes.Ops[0].(*setAttrOp)
+		sao, ok := newRmd.Data().Changes.Ops[0].(*setAttrOp)
 		if !ok {
 			t.Errorf("Couldn't find the setAttrOp")
 		}
 		checkOp(t, sao.OpCommon, nil, nil, nil)
-		dirUpdate := blockUpdate{rmd.data.Dir.BlockPointer,
+		dirUpdate := blockUpdate{rmd.Data().Dir.BlockPointer,
 			newP.path[0].BlockPointer}
 		if sao.Dir != dirUpdate {
 			t.Errorf("Incorrect dir update in op: %v vs. %v", sao.Dir,
@@ -3772,7 +3772,7 @@ func TestSetMtimeSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -3813,12 +3813,12 @@ func TestSetMtimeSuccess(t *testing.T) {
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
 	// make sure the setAttrOp is correct
-	sao, ok := newRmd.data.Changes.Ops[0].(*setAttrOp)
+	sao, ok := newRmd.Data().Changes.Ops[0].(*setAttrOp)
 	if !ok {
 		t.Errorf("Couldn't find the setAttrOp")
 	}
 	checkOp(t, sao.OpCommon, nil, nil, nil)
-	dirUpdate := blockUpdate{rmd.data.Dir.BlockPointer,
+	dirUpdate := blockUpdate{rmd.Data().Dir.BlockPointer,
 		newP.path[0].BlockPointer}
 	if sao.Dir != dirUpdate {
 		t.Errorf("Incorrect dir update in op: %v vs. %v", sao.Dir,
@@ -3917,7 +3917,7 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -3972,12 +3972,12 @@ func testSyncDirtySuccess(t *testing.T, isUnmerged bool) {
 	checkBlockCache(t, config, append(blocks, rootID), nil)
 
 	// check the sync op
-	so, ok := newRmd.data.Changes.Ops[0].(*syncOp)
+	so, ok := newRmd.Data().Changes.Ops[0].(*syncOp)
 	if !ok {
 		t.Errorf("Couldn't find the syncOp")
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, so.OpCommon, nil, nil, updates)
 	fileUpdate := blockUpdate{aNode.BlockPointer, newP.path[1].BlockPointer}
@@ -4005,7 +4005,7 @@ func TestSyncCleanSuccess(t *testing.T) {
 	u, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	node := pathNode{makeBP(rootID, rmd, config, u), "p"}
 	aNode := pathNode{makeBP(aID, rmd, config, u), "a"}
@@ -4080,7 +4080,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	fileID := fakeBlockID(43)
 	id1 := fakeBlockID(44)
 	id2 := fakeBlockID(45)
@@ -4173,7 +4173,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 		nil)
 
 	// check the sync op
-	so, ok := newRmd.data.Changes.Ops[0].(*syncOp)
+	so, ok := newRmd.Data().Changes.Ops[0].(*syncOp)
 	if !ok {
 		t.Errorf("Couldn't find the syncOp")
 	}
@@ -4184,7 +4184,7 @@ func TestSyncDirtyMultiBlocksSuccess(t *testing.T) {
 		makeBP(id4, rmd, config, keybase1.MakeTestUID(0)),
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, so.OpCommon, refBlocks, unrefBlocks, updates)
 	fileUpdate := blockUpdate{fileNode.BlockPointer, newP.path[1].BlockPointer}
@@ -4201,7 +4201,7 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	bID := fakeBlockID(44)
 	rootBlock := NewDirBlock().(*DirBlock)
@@ -4287,12 +4287,12 @@ func TestSyncDirtyDupBlockSuccess(t *testing.T) {
 	}
 
 	// check the sync op
-	so, ok := newRmd.data.Changes.Ops[0].(*syncOp)
+	so, ok := newRmd.Data().Changes.Ops[0].(*syncOp)
 	if !ok {
 		t.Errorf("Couldn't find the syncOp")
 	}
 	updates := []blockUpdate{
-		{rmd.data.Dir.BlockPointer, newP.path[0].BlockPointer},
+		{rmd.Data().Dir.BlockPointer, newP.path[0].BlockPointer},
 	}
 	checkOp(t, so.OpCommon, nil, nil, updates)
 	fileUpdate := blockUpdate{bNode.BlockPointer, newP.path[1].BlockPointer}
@@ -4334,7 +4334,7 @@ func TestSyncDirtyMultiBlocksSplitInBlockSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	fileID := fakeBlockID(43)
 	id1 := fakeBlockID(44)
 	id2 := fakeBlockID(45)
@@ -4529,7 +4529,7 @@ func TestSyncDirtyMultiBlocksCopyNextBlockSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	fileID := fakeBlockID(43)
 	id1 := fakeBlockID(44)
 	id2 := fakeBlockID(45)
@@ -4701,7 +4701,7 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	aID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["a"] = DirEntry{
@@ -4756,9 +4756,9 @@ func TestSyncDirtyWithBlockChangePointerSuccess(t *testing.T) {
 		t.Errorf("Got unexpected error on sync: %v", err)
 	}
 	newP := ops.nodeCache.PathFromNode(n)
-	if newRmd.data.cachedChanges.Info.ID != changeBlockID {
+	if newRmd.Data().cachedChanges.Info.ID != changeBlockID {
 		t.Errorf("Got unexpected changeBlocks pointer: %v vs %v",
-			newRmd.data.cachedChanges.Info.ID, changeBlockID)
+			newRmd.Data().cachedChanges.Info.ID, changeBlockID)
 	} else {
 		checkNewPath(t, ctx, config, newP, expectedPath, newRmd, blocks,
 			Exec, "", false)
@@ -4844,7 +4844,7 @@ func TestKBFSOpsBackgroundFlush(t *testing.T) {
 	uid, id, rmd := injectNewRMD(t, config)
 
 	rootID := fakeBlockID(42)
-	rmd.data.Dir.ID = rootID
+	rmd.Data().Dir.ID = rootID
 	fileID := fakeBlockID(43)
 	rootBlock := NewDirBlock().(*DirBlock)
 	rootBlock.Children["f"] = DirEntry{
