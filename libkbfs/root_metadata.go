@@ -786,9 +786,22 @@ func (rmds *RootMetadataSigned) IsInitialized() bool {
 // VerifyRootMetadata verifies rmd's MD against rmd's SigInfo,
 // assuming the verifying key there is valid.
 func (rmds *RootMetadataSigned) VerifyRootMetadata(codec Codec, crypto Crypto) error {
+	md := &rmds.MD
+	if rmds.MD.IsFinal() {
+		var err error
+		md, err = rmds.MD.deepCopy(codec, false)
+		if err != nil {
+			return err
+		}
+		// Mask out finalized additions.  These are the only things allowed
+		// to change in the finalized metadata block.
+		md.Flags &= ^MetadataFlagFinal
+		md.Revision--
+		md.FinalizedInfo = nil
+	}
 	// Re-marshal the whole RootMetadata. This is not avoidable
 	// without support from ugorji/codec.
-	buf, err := codec.Encode(rmds.MD)
+	buf, err := codec.Encode(md)
 	if err != nil {
 		return err
 	}
