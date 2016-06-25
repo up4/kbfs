@@ -573,8 +573,8 @@ func (fbo *folderBranchOps) setHeadLocked(ctx context.Context,
 		// revision is enough to trigger conflict resolution.
 		fbo.cr.Resolve(md.Revision, MetadataRevisionUninitialized)
 	} else if md.MergedStatus() == Merged {
-		// if we are already merged through this write, the revision would be the
-		// latestMergedRevision on server
+		// If we are already merged through this write, the revision would be the
+		// latestMergedRevision on server.
 		fbo.setLatestMergedRevisionLocked(ctx, lState, md.Revision)
 	}
 
@@ -3149,8 +3149,6 @@ func (fbo *folderBranchOps) reembedForFBM(ctx context.Context,
 
 type applyMDUpdatesFunc func(context.Context, *lockState, []*RootMetadata) error
 
-var errUnmerged = errors.New("fbo is on an unmerged local revision")
-
 func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 	lState *lockState, rmds []*RootMetadata) error {
 	fbo.mdWriterLock.AssertLocked(lState)
@@ -3172,7 +3170,7 @@ func (fbo *folderBranchOps) applyMDUpdatesLocked(ctx context.Context,
 			}
 			fbo.cr.Resolve(unmergedRev, rmds[len(rmds)-1].Revision)
 		}
-		return errUnmerged
+		return UnmergedError{}
 	}
 
 	// Don't allow updates while we're in the dirty state; the next
@@ -3277,7 +3275,7 @@ func (fbo *folderBranchOps) setLatestMergedRevisionLocked(ctx context.Context, l
 	fbo.headLock.AssertLocked(lState)
 
 	fbo.latestMergedRevision = rev
-	fbo.log.CDebugf(ctx, "updated latestMergedRevision to %d", rev)
+	fbo.log.CDebugf(ctx, "Updated latestMergedRevision to %d.", rev)
 }
 
 // Assumes all necessary locking is either already done by caller, or
@@ -3727,8 +3725,6 @@ func (fbo *folderBranchOps) ctxWithFBOID(ctx context.Context) context.Context {
 	return ctxWithRandomID(ctx, CtxFBOIDKey, CtxFBOOpID, fbo.log)
 }
 
-var errShutdownHappened = errors.New("Shutdown happened")
-
 // Run the passed function with a context that's canceled on shutdown.
 func (fbo *folderBranchOps) runUnlessShutdown(fn func(ctx context.Context) error) error {
 	ctx := fbo.ctxWithFBOID(context.Background())
@@ -3743,7 +3739,7 @@ func (fbo *folderBranchOps) runUnlessShutdown(fn func(ctx context.Context) error
 	case err := <-errChan:
 		return err
 	case <-fbo.shutdownChan:
-		return errShutdownHappened
+		return ShutdownHappenedError{}
 	}
 }
 
@@ -3775,7 +3771,7 @@ func (fbo *folderBranchOps) registerAndWaitForUpdates() {
 					}
 				}
 				err = fbo.waitForAndProcessUpdates(newCtx, updateChan)
-				if err == errUnmerged {
+				if _, ok := err.(UnmergedError); ok {
 					// skip the back-off timer and continue directly to next
 					// registerForUpdates
 					return nil
